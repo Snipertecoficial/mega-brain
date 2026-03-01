@@ -45,7 +45,7 @@ DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
 DEFAULT_CHECKPOINT_INTERVAL = 5  # Save checkpoint every N files
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # Exponential: 2^attempt seconds
-CAPACITY_BACKOFF_BASE = 10  # Longer backoff for model capacity errors: 10^1=10s, 10*2=20s, 10*3=30s
+CAPACITY_BACKOFF_BASE = 10  # Longer backoff for model capacity errors: 10*1=10s, 10*2=20s, 10*3=30s
 CAPACITY_ERROR_PATTERNS = ['MODEL_CAPACITY_EXHAUSTED', '503', 'UNAVAILABLE', 'No capacity available']
 
 
@@ -469,7 +469,8 @@ class AutonomousProcessor:
         """Check if the error indicates model capacity exhaustion."""
         if not error_msg:
             return False
-        return any(pattern in error_msg for pattern in CAPACITY_ERROR_PATTERNS)
+        lower_msg = error_msg.lower()
+        return any(pattern.lower() in lower_msg for pattern in CAPACITY_ERROR_PATTERNS)
 
     def _requeue_with_backoff(self, item: QueueItem) -> None:
         """Re-add item to queue after backoff delay."""

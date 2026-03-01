@@ -118,7 +118,7 @@ When enabled, `resolve-model` returns both `model` and `fallback` fields. Orches
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| `MODEL_CAPACITY_EXHAUSTED` | No server capacity for the requested model | Wait and retry, or use fallback model |
-| `UNAVAILABLE` | Service temporarily unavailable | Retry with exponential backoff |
+| `MODEL_CAPACITY_EXHAUSTED` | No server capacity for the requested model | Wait and retry with capacity backoff, or use fallback model |
+| `UNAVAILABLE` | Service temporarily unavailable | Wait and retry with capacity backoff, or use fallback model |
 
 **Tip:** If you consistently hit capacity limits on `opus`, switch to `"model_profile": "balanced"` which uses Sonnet for most agents, reserving Opus only for planning.
