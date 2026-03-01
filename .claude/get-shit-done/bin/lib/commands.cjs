@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { safeReadFile, loadConfig, isGitIgnored, execGit, normalizePhaseName, comparePhaseNum, getArchivedPhaseDirs, generateSlugInternal, getMilestoneInfo, resolveModelInternal, MODEL_PROFILES, output, error, findPhaseInternal } = require('./core.cjs');
+const { safeReadFile, loadConfig, isGitIgnored, execGit, normalizePhaseName, comparePhaseNum, getArchivedPhaseDirs, generateSlugInternal, getMilestoneInfo, resolveModelInternal, resolveModelWithFallback, MODEL_PROFILES, MODEL_FALLBACK_CHAIN, output, error, findPhaseInternal } = require('./core.cjs');
 const { extractFrontmatter } = require('./frontmatter.cjs');
 
 function cmdGenerateSlug(text, raw) {
@@ -207,14 +207,13 @@ function cmdResolveModel(cwd, agentType, raw) {
 
   const agentModels = MODEL_PROFILES[agentType];
   if (!agentModels) {
-    const result = { model: 'sonnet', profile, unknown_agent: true };
+    const result = { model: 'sonnet', fallback: 'haiku', profile, unknown_agent: true };
     output(result, raw, 'sonnet');
     return;
   }
 
-  const resolved = agentModels[profile] || agentModels['balanced'] || 'sonnet';
-  const model = resolved === 'opus' ? 'inherit' : resolved;
-  const result = { model, profile };
+  const { model, fallback } = resolveModelWithFallback(cwd, agentType);
+  const result = { model, fallback, profile };
   output(result, raw, model);
 }
 

@@ -22,6 +22,15 @@ const MODEL_PROFILES = {
   'gsd-integration-checker':  { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
 };
 
+// ─── Model Fallback Chain ─────────────────────────────────────────────────────
+// When a model returns 503 MODEL_CAPACITY_EXHAUSTED, fall back to the next tier.
+const MODEL_FALLBACK_CHAIN = {
+  'opus':   'sonnet',
+  'sonnet': 'haiku',
+  'haiku':  'haiku',    // haiku is the floor — no further fallback
+  'inherit': 'sonnet',  // inherit (opus-tier) falls back to sonnet
+};
+
 // ─── Output helpers ───────────────────────────────────────────────────────────
 
 function output(result, raw, rawValue) {
@@ -358,6 +367,12 @@ function resolveModelInternal(cwd, agentType) {
   return resolved === 'opus' ? 'inherit' : resolved;
 }
 
+function resolveModelWithFallback(cwd, agentType) {
+  const model = resolveModelInternal(cwd, agentType);
+  const fallback = MODEL_FALLBACK_CHAIN[model] || 'sonnet';
+  return { model, fallback };
+}
+
 // ─── Misc utilities ───────────────────────────────────────────────────────────
 
 function pathExistsInternal(cwd, targetPath) {
@@ -391,6 +406,7 @@ function getMilestoneInfo(cwd) {
 
 module.exports = {
   MODEL_PROFILES,
+  MODEL_FALLBACK_CHAIN,
   output,
   error,
   safeReadFile,
@@ -405,6 +421,7 @@ module.exports = {
   getArchivedPhaseDirs,
   getRoadmapPhaseInternal,
   resolveModelInternal,
+  resolveModelWithFallback,
   pathExistsInternal,
   generateSlugInternal,
   getMilestoneInfo,
