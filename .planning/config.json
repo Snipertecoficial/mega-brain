@@ -4,6 +4,7 @@
   "parallelization": true,
   "commit_docs": true,
   "model_profile": "balanced",
+  "model_fallback": true,
   "workflow": {
     "research": false,
     "plan_check": true,

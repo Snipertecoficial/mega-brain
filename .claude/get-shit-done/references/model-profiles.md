@@ -90,3 +90,35 @@ Read-only exploration and pattern extraction. No reasoning required, just struct
 
 **Why `inherit` instead of passing `opus` directly?**
 Claude Code's `"opus"` alias maps to a specific model version. Organizations may block older opus versions while allowing newer ones. GSD returns `"inherit"` for opus-tier agents, causing them to use whatever opus version the user has configured in their session. This avoids version conflicts and silent fallbacks to Sonnet.
+
+## Model Fallback Chain
+
+When a model returns **HTTP 503 (MODEL_CAPACITY_EXHAUSTED)**, the system uses a fallback chain to gracefully degrade:
+
+| Primary | Fallback |
+|---------|----------|
+| opus (inherit) | sonnet |
+| sonnet | haiku |
+| haiku | haiku (floor) |
+
+### Enabling Fallback
+
+Set `model_fallback: true` in `.planning/config.json`:
+
+```json
+{
+  "model_profile": "balanced",
+  "model_fallback": true
+}
+```
+
+When enabled, `resolve-model` returns both `model` and `fallback` fields. Orchestrators should retry with the fallback model on 503 errors.
+
+### Common 503 Errors
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `MODEL_CAPACITY_EXHAUSTED` | No server capacity for the requested model | Wait and retry, or use fallback model |
+| `UNAVAILABLE` | Service temporarily unavailable | Retry with exponential backoff |
+
+**Tip:** If you consistently hit capacity limits on `opus`, switch to `"model_profile": "balanced"` which uses Sonnet for most agents, reserving Opus only for planning.

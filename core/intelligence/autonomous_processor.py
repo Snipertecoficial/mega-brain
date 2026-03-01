@@ -45,6 +45,8 @@ DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
 DEFAULT_CHECKPOINT_INTERVAL = 5  # Save checkpoint every N files
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # Exponential: 2^attempt seconds
+CAPACITY_BACKOFF_BASE = 10  # Longer backoff for model capacity errors: 10^1=10s, 10*2=20s, 10*3=30s
+CAPACITY_ERROR_PATTERNS = ['MODEL_CAPACITY_EXHAUSTED', '503', 'UNAVAILABLE', 'No capacity available']
 
 
 # ============================================================================
@@ -335,8 +337,9 @@ class AutonomousProcessor:
                             'event': 'file_requeued',
                             'file': item.file_path,
                             'attempt': item.attempts,
-                            'backoff': self._calculate_backoff(item.attempts),
-                            'error': result.error
+                            'backoff': self._calculate_backoff(item.attempts, result.error),
+                            'error': result.error,
+                            'is_capacity_error': self._is_capacity_error(result.error)
                         })
                     else:
                         # Max retries exceeded
@@ -455,9 +458,18 @@ class AutonomousProcessor:
         """Check if item should be retried (attempts < MAX_RETRIES)."""
         return item.attempts < MAX_RETRIES
 
-    def _calculate_backoff(self, attempts: int) -> float:
-        """Calculate exponential backoff: 2^attempts seconds."""
+    def _calculate_backoff(self, attempts: int, error_msg: Optional[str] = None) -> float:
+        """Calculate backoff delay. Uses longer delay for model capacity errors."""
+        if error_msg and self._is_capacity_error(error_msg):
+            return CAPACITY_BACKOFF_BASE * attempts
         return BACKOFF_BASE ** attempts
+
+    @staticmethod
+    def _is_capacity_error(error_msg: str) -> bool:
+        """Check if the error indicates model capacity exhaustion."""
+        if not error_msg:
+            return False
+        return any(pattern in error_msg for pattern in CAPACITY_ERROR_PATTERNS)
 
     def _requeue_with_backoff(self, item: QueueItem) -> None:
         """Re-add item to queue after backoff delay."""
